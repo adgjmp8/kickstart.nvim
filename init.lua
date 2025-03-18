@@ -102,10 +102,10 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
-vim.opt.mouse = 'a'
+vim.opt.mouse = ''
 
 -- Don't show the mode, since it's already in the status line
 vim.opt.showmode = false
@@ -127,9 +127,10 @@ vim.opt.undofile = true
 -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
+vim.opt.showmatch = true
 
 -- Keep signcolumn on by default
-vim.opt.signcolumn = 'yes'
+vim.opt.signcolumn = 'yes:2'
 
 -- Decrease update time
 vim.opt.updatetime = 250
@@ -161,6 +162,17 @@ vim.opt.scrolloff = 10
 -- See `:help 'confirm'`
 vim.opt.confirm = true
 
+vim.opt.encoding = 'utf-8'
+vim.opt.fileformat = 'unix'
+vim.opt.fileencoding = 'utf-8'
+vim.opt.fileencodings = { 'ucs-bom,utf-8,euc-jp,iso-2022-jp,cp932,sjis,latin1' }
+vim.opt.backup = false
+vim.opt.writebackup = false
+vim.opt.swapfile = false
+vim.opt.secure = false
+vim.opt.hidden = true
+vim.opt.termguicolors = false
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -177,7 +189,11 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 --
 -- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
 -- or just use <C-\><C-n> to exit terminal mode
-vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+vim.keymap.set('t', '<C-j>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+
+vim.keymap.set('x', '<C-j>', '<Esc>', { desc = 'Exit mode' })
+vim.keymap.set('i', '<C-j>', '<Esc>', { desc = 'Exit mode' })
+vim.keymap.set('v', '<C-j>', '<Esc>', { desc = 'Exit mode' })
 
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
@@ -208,6 +224,12 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+if vim.fn.executable 'rg' then
+  -- if ripgrep installed, use that as a grepper
+  vim.opt.grepprg = "rg --hidden --vimgrep --no-heading --smart-case --glob '!.git'"
+  vim.opt.grepformat = '%f:%l:%c:%m,%f:%l:%m'
+end
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -234,6 +256,12 @@ vim.opt.rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
+  {
+    'rhysd/vim-clang-format',
+  },
+  {
+    'AndrewRadev/linediff.vim',
+  },
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -269,7 +297,20 @@ require('lazy').setup({
       },
     },
   },
-
+  {
+    'shellRaining/hlchunk.nvim',
+    event = { 'BufReadPre', 'BufNewFile' },
+    config = function()
+      require('hlchunk').setup {
+        chunk = {
+          enable = true,
+        },
+        indent = {
+          enable = true,
+        },
+      }
+    end,
+  },
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
   --
   -- This is often very useful to both group configuration, as well as handle
@@ -341,6 +382,20 @@ require('lazy').setup({
     },
   },
 
+  {
+    'folke/flash.nvim',
+    event = 'VeryLazy',
+    opts = {},
+    -- stylua: ignore
+    keys = {
+      { "s", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash" },
+      { "S", mode = { "n", "x", "o" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
+      { "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
+      { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
+      { "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle Flash Search" },
+    },
+  },
+
   -- NOTE: Plugins can specify dependencies.
   --
   -- The dependencies are proper plugin specifications as well - anything
@@ -371,6 +426,8 @@ require('lazy').setup({
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+      { 'tsakirist/telescope-lazy.nvim' },
+      { 'chentoast/marks.nvim' },
     },
     config = function()
       -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -407,6 +464,21 @@ require('lazy').setup({
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
+          },
+        },
+      }
+
+      require('marks').setup {
+        extensions = {
+          lazy = {
+            theme = 'ivy',
+            show_icon = true,
+          },
+          fzf = {
+            fuzzy = true, -- false will only do exact matching
+            override_generic_sorter = true, -- override the generic sorter
+            override_file_sorter = true, -- override the file sorter
+            case_mode = 'smart_case', -- or "ignore_case" or "respect_case"
           },
         },
       }
@@ -686,7 +758,7 @@ require('lazy').setup({
                 callSnippet = 'Replace',
               },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
+              diagnostics = { disable = { 'missing-fields' } },
             },
           },
         },
@@ -768,6 +840,39 @@ require('lazy').setup({
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
       },
+    },
+  },
+
+  {
+    'HiPhish/rainbow-delimiters.nvim',
+    event = 'BufReadPost',
+    config = function()
+      -- patch https://github.com/nvim-treesitter/nvim-treesitter/issues/1124
+      vim.cmd.edit { bang = true }
+    end,
+    dependencies = {
+      { 'nvim-treesitter/nvim-treesitter' },
+    },
+  },
+  {
+    'nvimdev/lspsaga.nvim',
+    event = 'LspAttach',
+    config = function()
+      require('lspsaga').setup {
+        symbol_in_winbar = {
+          enable = false,
+        },
+      }
+    end,
+    dependencies = {
+      { 'nvim-tree/nvim-web-devicons' },
+      { 'nvim-treesitter/nvim-treesitter' },
+    },
+    keys = {
+      { '-', '<CMD>Lspsaga finder<CR>', desc = 'Lspsaga finder' },
+      { '?', '<CMD>Lspsaga hover_doc<CR>', desc = 'Lspsaga hover' },
+      { '<c-]>', '<CMD>Lspsaga goto_definition<CR>', desc = 'Lspsaga definition' },
+      { '<c-n><c-t>', '<CMD>Lspsaga outline<CR>', desc = 'Lspsaga outline' },
     },
   },
 
@@ -884,6 +989,24 @@ require('lazy').setup({
           { name = 'luasnip' },
           { name = 'path' },
           { name = 'nvim_lsp_signature_help' },
+          { name = 'treesitter', priority = 30 },
+        },
+      }
+    end,
+  },
+
+  {
+    'catppuccin/nvim',
+    name = 'catppuccin',
+    priority = 1000,
+    config = function()
+      vim.cmd.colorscheme 'catppuccin-macchiato'
+      require('catppuccin').setup {
+        transparent_background = true,
+        ter_colors = true,
+        integration = {
+          lsp_saga = true,
+          --              neotree = true,
         },
       }
     end,
@@ -907,7 +1030,7 @@ require('lazy').setup({
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- vim.cmd.colorscheme 'tokyonight-night'
     end,
   },
 
@@ -975,6 +1098,22 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+  {
+    'nvim-treesitter/nvim-treesitter-textobjects',
+    dependencies = {
+      { 'nvim-treesitter/nvim-treesitter' },
+    },
+  },
+  {
+    'stevearc/oil.nvim',
+    opts = {},
+    -- Optional dependencies
+    dependencies = { { 'echasnovski/mini.icons', opts = {} } },
+    -- dependencies = { "nvim-tree/nvim-web-devicons" },
+    keys = {
+      { '<C-n><C-n>', '<CMD>Oil<CR>', desc = 'Open parent directory' },
+    },
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
